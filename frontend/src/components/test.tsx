@@ -32,7 +32,7 @@ const Backup: React.FC = () => {
 
   const fetchBackups = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api_locales/api/backups', {
+      const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/backups`, {
         params: {
             local_id: localId,
             start_date: startDate,
