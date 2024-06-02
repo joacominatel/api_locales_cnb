@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { format } from 'date-fns';
+import ReloadButton from './ReloadButton';
 
 interface Backup {
   id: number;
@@ -108,7 +109,7 @@ const BackupTable: React.FC = () => {
         </label>
         {isModalOpen && (
         <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-75">
-          <div className="bg-gray-900 p-6 rounded shadow-lg max-w-3xl w-full">
+          <div className="bg-gray-900 p-6 rounded-lg shadow-lg max-w-3xl w-full border border-gray-600">
             <h2 className="text-lg font-bold mb-4">Select a Local</h2>
             <div className="grid grid-cols-2 gap-4">
               {currentLocals.map((local: Local) => (
@@ -135,7 +136,7 @@ const BackupTable: React.FC = () => {
                     key={index}
                     onClick={() => handlePageChangeLocals(index + 1)}
                     className={`px-3 py-1 rounded ${
-                      currentPageLocals === index + 1 ? 'bg-blue-500 text-white' : 'bg-gray-300'
+                      currentPageLocals === index + 1 ? 'bg-blue-500 text-white' : 'bg-gray-600'
                     }`}
                   >
                     {index + 1}
@@ -214,6 +215,7 @@ const BackupTable: React.FC = () => {
           Next
         </button>
       </div>
+      <ReloadButton onClick={fetchBackups} />
     </div>
   );
 };
