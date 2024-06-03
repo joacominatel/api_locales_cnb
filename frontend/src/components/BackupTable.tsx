@@ -173,7 +173,7 @@ const BackupTable: React.FC = () => {
             <th className="px-6 py-3">Local ID</th>
             <th className="px-6 py-3">Nombre DB</th>
             <th className="px-6 py-3">IP Address</th>
-            <th className="px-6 py-3">Puerto</th>
+            <th className="px-6 py-3">Trabajo</th>
             <th className="px-6 py-3">Estado</th>
             <th className="px-6 py-3">Fecha Inicio</th>
             <th className="px-6 py-3">Fecha Fin</th>
@@ -187,7 +187,7 @@ const BackupTable: React.FC = () => {
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{backup.local_id}</td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{backup.nombre_db}</td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{backup.ip_addr}</td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{backup.puerto}</td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{backup.trabajo}</td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{backup.estado}</td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{backup.fecha_inicio_backup}</td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{backup.fecha_fin_backup}</td>
