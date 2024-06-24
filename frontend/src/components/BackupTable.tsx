@@ -7,6 +7,7 @@ import ReloadButton from './ReloadButton';
 interface Backup {
   id: number;
   local_id: string;
+  localName?: string | null;
   nombre_db: string;
   ip_addr: string;
   puerto: number;
@@ -53,12 +54,38 @@ const BackupTable: React.FC = () => {
             end_date: endDate === '' ? format(new Date(), 'yyyy-MM-dd') : endDate,
         }
       });
-      // console.log('response:', response);
-      setBackups(response.data.backups);
+
+      const sortedBackups = response.data.backups.sort((a: Backup, b: Backup) => {
+        // sort by fecha_inicio_backup in descending order and local_id in ascending order
+        if (a.local_id !== b.local_id) {
+          return a.local_id.localeCompare(b.local_id);
+        } else {
+          return new Date(b.fecha_inicio_backup).getTime() - new Date(a.fecha_inicio_backup).getTime();
+        }
+      });
+
+      const backupWithLocalNames = await Promise.all(sortedBackups.map(async (backup: Backup) => {
+        const localName = await getLocalName(backup.local_id);
+        return {
+          ...backup,
+          local_id: localName,
+        };
+      }));
+
+      setBackups(backupWithLocalNames);
     } catch (error: any) {
       throw new Error('Error fetching backups:', error);
     }
   };
+
+  const getLocalName = async (localId: string) => {
+    try {
+      const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/parlocs/${localId}`);
+      return response.data.parloc.ParLocNom;
+    } catch (error: any) {
+      throw new Error('Error fetching local name:', error);
+    }
+  }
 
   const getLocals = async () => {
     try {
@@ -182,15 +209,14 @@ const BackupTable: React.FC = () => {
         </thead>
         <tbody className="bg-gray-800 divide-y divide-gray-700">
           {paginatedBackups.map((backup: Backup) => (
-            <tr key={backup.id} className={backup.estado === 'En proceso' ? 'bg-yellow-600' : 'bg-emerald-500'}>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{backup.id}</td>
+            <tr key={backup.id} className={backup.estado === 'En proceso' ? 'bg-yellow-600' : 'bg-emerald-700'}>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{backup.local_id}</td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{backup.nombre_db}</td>
+              {/* nombre local */}
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{backup.localName}</td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{backup.ip_addr}</td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{backup.trabajo}</td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{backup.estado}</td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{backup.fecha_inicio_backup}</td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{backup.fecha_fin_backup}</td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{backup.duracion_backup} mins.</td>
             </tr>
           ))}

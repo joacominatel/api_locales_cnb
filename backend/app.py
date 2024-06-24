@@ -214,6 +214,31 @@ def parlocs():
             'message': f'Error al obtener locales: {e}'
         }), 500
     
+@app.route('/api_locales/parlocs/<int:id>', methods=['GET'])
+# @jwt_required()
+def getLocalName(id):
+    # token = request.headers.get('Authorization')
+    # user = check_token(token)
+
+    try:
+        # if user:
+            parloc = g.db_session.query(Parloc).filter_by(id=id).first()
+            return jsonify({
+                'success': True,
+                'parloc': parloc.serialize()
+            })
+        # else:
+            return jsonify({
+                'success': False,
+                'message': 'Token inválido'
+            })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error al obtener local: {e}'
+        }), 500
+
+    
 @app.route('/api_locales/api/post_backup', methods=['POST'])
 def post_backup():
     """
