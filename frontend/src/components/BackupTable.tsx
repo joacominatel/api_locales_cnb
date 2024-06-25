@@ -1,5 +1,5 @@
 'use client';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
 import { format } from 'date-fns';
 import ReloadButton from './ReloadButton';
@@ -41,34 +41,29 @@ const BackupTable: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [locals, setLocals] = useState([]);
 
-  useEffect(() => {
-    fetchBackups();
-  }, [localId, startDate, endDate, currentPage]);
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api_locales';
 
-  const fetchBackups = async () => {
+
+  const fetchBackups = useCallback(async () => {
     try {
-      const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/backups`, {
+      const response = await axios.get(`${API_URL}/api/backups`, {
         params: {
             local_id: localId,
             start_date: startDate,
             end_date: endDate === '' ? format(new Date(), 'yyyy-MM-dd') : endDate,
         }
       });
-
+      
       const sortedBackups = response.data.backups.sort((a: Backup, b: Backup) => {
         // sort by fecha_inicio_backup in descending order and local_id in ascending order
-        if (a.local_id !== b.local_id) {
-          return a.local_id.localeCompare(b.local_id);
-        } else {
-          return new Date(b.fecha_inicio_backup).getTime() - new Date(a.fecha_inicio_backup).getTime();
-        }
+        return new Date(b.fecha_inicio_backup).getTime() - new Date(a.fecha_inicio_backup).getTime() || a.local_id.localeCompare(b.local_id);
       });
 
       const backupWithLocalNames = await Promise.all(sortedBackups.map(async (backup: Backup) => {
         const localName = await getLocalName(backup.local_id);
         return {
           ...backup,
-          local_id: localName,
+          localName: localName,
         };
       }));
 
@@ -76,20 +71,24 @@ const BackupTable: React.FC = () => {
     } catch (error: any) {
       throw new Error('Error fetching backups:', error);
     }
-  };
+  }, [localId, startDate, endDate]);
+
+  useEffect(() => {
+    fetchBackups();
+  }, [localId, startDate, endDate, currentPage, fetchBackups]);
 
   const getLocalName = async (localId: string) => {
     try {
-      const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/parlocs/${localId}`);
+      const response = await axios.get(`${API_URL}/parlocs/${localId}`);
       return response.data.parloc.ParLocNom;
     } catch (error: any) {
-      throw new Error('Error fetching local name:', error);
+      return 'Unknown Local';
     }
   }
 
   const getLocals = async () => {
     try {
-      const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/parlocs`);
+      const response = await axios.get(`${API_URL}/parlocs`);
       setLocals(response.data.parlocs);
       setIsModalOpen(true);
     } catch (error: any) {
@@ -119,7 +118,7 @@ const BackupTable: React.FC = () => {
   return (
     <div className="container mx-auto px-4 py-8 bg-gray-900 text-gray-100">
       <div className="flex justify-between items-center my-4">
-        <label className="block text-gray-400">
+        <label className="block text-gray-100">
           Local ID:
           <input
             type="text"
@@ -174,7 +173,7 @@ const BackupTable: React.FC = () => {
           </div>
         </div>
       )}
-        <label className="block text-gray-400">
+        <label className="block text-gray-100">
           Start Date:
           <input
             type="date"
@@ -183,7 +182,7 @@ const BackupTable: React.FC = () => {
             className="bg-gray-800 text-gray-200 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </label>
-        <label className="block text-gray-400">
+        <label className="block text-gray-100">
           End Date:
           <input
             type="date"
@@ -195,23 +194,20 @@ const BackupTable: React.FC = () => {
       </div>
       <table className="min-w-full divide-y divide-gray-700">
         <thead className="bg-gray-800">
-          <tr className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-            <th className="px-6 py-3">ID</th>
+          <tr className="text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
             <th className="px-6 py-3">Local ID</th>
-            <th className="px-6 py-3">Nombre DB</th>
+            <th className="px-6 py-3">Local Name</th>
             <th className="px-6 py-3">IP Address</th>
             <th className="px-6 py-3">Trabajo</th>
             <th className="px-6 py-3">Estado</th>
-            <th className="px-6 py-3">Fecha Inicio</th>
-            <th className="px-6 py-3">Fecha Fin</th>
-            <th className="px-6 py-3">Duración</th>
+            <th className="px-6 py-3">Fecha Inicio Backup</th>
+            <th className="px-6 py-3">Duración Backup</th>
           </tr>
         </thead>
         <tbody className="bg-gray-800 divide-y divide-gray-700">
           {paginatedBackups.map((backup: Backup) => (
             <tr key={backup.id} className={backup.estado === 'En proceso' ? 'bg-yellow-600' : 'bg-emerald-700'}>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{backup.local_id}</td>
-              {/* nombre local */}
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{backup.localName}</td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{backup.ip_addr}</td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{backup.trabajo}</td>
@@ -230,7 +226,7 @@ const BackupTable: React.FC = () => {
         >
           Previous
         </button>
-        <div className="text-gray-400">
+        <div className="text-gray-100">
           Page {currentPage} of {totalPages}
         </div>
         <button

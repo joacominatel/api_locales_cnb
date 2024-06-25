@@ -222,7 +222,7 @@ def getLocalName(id):
 
     try:
         # if user:
-            parloc = g.db_session.query(Parloc).filter_by(id=id).first()
+            parloc = g.db_session.query(Parloc).filter_by(ParLoc=id).first()
             return jsonify({
                 'success': True,
                 'parloc': parloc.serialize()
