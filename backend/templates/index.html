@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Backup Table</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@2.8.2" integrity="sha384-3m9/ifdGm9nRTngfpsoZpDLF0D7HCGzoFjBhqqvEex1FxGlRthjq0fYFv1+OHwqU" crossorigin="anonymous"></script>
+    <style>
+        .fixed-bottom {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background-color: white;
+            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+            padding: 1rem;
+        }
+        .disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-6">
+    <div class="container mx-auto">
+        <h1 class="text-3xl font-bold mb-6">Backups</h1>
+        
+        <div class="mb-4">
+            <form id="filterForm" class="flex space-x-4">
+                <div class="relative">
+                    <input type="text" id="local_id" name="local_id" placeholder="Local ID" class="border border-gray-300 rounded-md p-2">
+                    <button type="button" class="absolute right-2 top-2 text-gray-500" x-on:click="showModal = true">
+                        🔍
+                    </button>
+                </div>
+                <input type="date" id="start_date" name="start_date" placeholder="Start Date" class="border border-gray-300 rounded-md p-2">
+                <input type="date" id="end_date" name="end_date" placeholder="End Date" class="border border-gray-300 rounded-md p-2">
+                <button type="submit" class="bg-blue-500 text-white rounded-md px-4 py-2">Filter</button>
+            </form>
+        </div>
+
+        <div class="bg-white shadow-md rounded-lg overflow-hidden">
+            <table class="min-w-full bg-white" id="backupTable">
+                <thead>
+                    <tr>
+                        <th class="py-2 px-4 bg-gray-200 text-gray-600 font-bold uppercase text-sm">Local ID</th>
+                        <th class="py-2 px-4 bg-gray-200 text-gray-600 font-bold uppercase text-sm">Local Name</th>
+                        <th class="py-2 px-4 bg-gray-200 text-gray-600 font-bold uppercase text-sm">IP Address</th>
+                        <th class="py-2 px-4 bg-gray-200 text-gray-600 font-bold uppercase text-sm">Trabajo</th>
+                        <th class="py-2 px-4 bg-gray-200 text-gray-600 font-bold uppercase text-sm">Estado</th>
+                        <th class="py-2 px-4 bg-gray-200 text-gray-600 font-bold uppercase text-sm">Fecha Inicio Backup</th>
+                        <th class="py-2 px-4 bg-gray-200 text-gray-600 font-bold uppercase text-sm">Duración Backup (min)</th>
+                        <th class="py-2 px-4 bg-gray-200 text-gray-600 font-bold uppercase text-sm">Datos</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for backup in backups %}
+                    <tr data-local-id="{{ backup.local_id }}">
+                        <td class="py-2 px-4 border-b border-gray-200">{{ backup.local_id }}</td>
+                        <td class="py-2 px-4 border-b border-gray-200 local-name">Loading...</td>
+                        <td class="py-2 px-4 border-b border-gray-200">{{ backup.ip_addr }}</td>
+                        <td class="py-2 px-4 border-b border-gray-200">{{ backup.trabajo }}</td>
+                        <td class="py-2 px-4 border-b border-gray-200 {% if backup.estado == 'Completado' %}bg-green-200{% endif %}">{{ backup.estado }}</td>
+                        <td class="py-2 px-4 border-b border-gray-200">{{ backup.fecha_inicio_backup }}</td>
+                        <td class="py-2 px-4 border-b border-gray-200">{{ backup.duracion_backup }}</td>
+                        <td class="py-2 px-4 border-b border-gray-200">{{ backup.datos_adicionales }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="fixed-bottom flex justify-between items-center">
+            <button id="prevPage" class="bg-gray-500 text-white rounded-md px-4 py-2">Previous</button>
+            <span>Page {{ current_page }} of {{ pages }}</span>
+            <button id="nextPage" class="bg-gray-500 text-white rounded-md px-4 py-2">Next</button>
+        </div>
+        
+        <!-- Modal -->
+        <!-- <div x-data="{ showModal: false }" x-show="showModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+            <div class="bg-white rounded-lg shadow-lg p-4 max-w-md w-full">
+                <h2 class="text-xl font-bold mb-4">Select Local</h2>
+                <ul>
+                    {% for local in locales %}
+                    <li class="py-2 px-4 border-b border-gray-200 cursor-pointer" x-on:click="document.getElementById('local_id').value = '{{ local.local_id }}'; showModal = false;">
+                        {{ local.localName }}
+                    </li>
+                    {% endfor %}
+                </ul>
+                <button class="mt-4 bg-red-500 text-white rounded-md px-4 py-2" x-on:click="showModal = false">Close</button>
+            </div>
+        </div>
+    </div> -->
+    <!-- add axios -->
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script>
+        // Optionally, you can add JavaScript to handle form submission, modal actions, etc.
+        document.getElementById('filterForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            
+            const local_id = document.getElementById('local_id').value;
+            const start_date = document.getElementById('start_date').value;
+            const end_date = document.getElementById('end_date').value;
+
+            // Redirect to the same page with the query string
+            window.location.href = `
+                /api_locales?local_id=${local_id}&start_date=${start_date}&end_date=${end_date}
+            `;
+        });
+
+        // on modal open, call /api_locales/parlocs
+        document.getElementById('local_id').addEventListener('click', function() {
+            axios.get('/api_locales/parlocs')
+    .then(function(response) {
+        console.log(response.data);
+
+        // Pagination settings
+        let currentPage = 1;
+        const itemsPerPage = 20;
+        const locales = response.data.parlocs;
+        const totalPages = Math.ceil(locales.length / itemsPerPage);
+
+        // Function to render modal content
+        const renderModalContent = (page) => {
+            const start = (page - 1) * itemsPerPage;
+            const end = start + itemsPerPage;
+            const currentLocales = locales.slice(start, end);
+
+            const ul = document.createElement('ul');
+            ul.classList.add('grid', 'grid-cols-2', 'gap-4');
+
+            currentLocales.forEach(function(local) {
+                const li = document.createElement('li');
+                li.classList.add('py-2', 'px-4', 'border', 'border-gray-200', 'cursor-pointer');
+                li.textContent = `${local.ParLoc}. ${local.ParLocNom}`;
+                li.addEventListener('click', function() {
+                    document.getElementById('local_id').value = local.ParLoc;
+                    modal.remove();
+                });
+                ul.appendChild(li);
+            });
+
+            return ul;
+        };
+
+        // Function to render pagination controls
+        const renderPaginationControls = () => {
+            const pagination = document.createElement('div');
+            pagination.classList.add('flex', 'justify-between', 'mt-4');
+
+            const prevButton = document.createElement('button');
+            prevButton.classList.add('bg-gray-500', 'text-white', 'rounded-md', 'px-4', 'py-2');
+            prevButton.textContent = 'Previous';
+            prevButton.disabled = currentPage === 1;
+            prevButton.addEventListener('click', () => {
+                if (currentPage > 1) {
+                    currentPage--;
+                    updateModalContent();
+                }
+            });
+
+            const nextButton = document.createElement('button');
+            nextButton.classList.add('bg-gray-500', 'text-white', 'rounded-md', 'px-4', 'py-2');
+            nextButton.textContent = 'Next';
+            nextButton.disabled = currentPage === totalPages;
+            nextButton.addEventListener('click', () => {
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    updateModalContent();
+                }
+            });
+
+            pagination.appendChild(prevButton);
+            pagination.appendChild(nextButton);
+
+            return pagination;
+        };
+
+        // Function to update modal content
+        const updateModalContent = () => {
+            modalContent.innerHTML = '';
+            modalContent.appendChild(title);
+            modalContent.appendChild(renderModalContent(currentPage));
+            modalContent.appendChild(renderPaginationControls());
+            modalContent.appendChild(closeButton);
+        };
+
+        // Create modal
+        const modal = document.createElement('div');
+        modal.classList.add('fixed', 'inset-0', 'bg-black', 'bg-opacity-50', 'flex', 'items-center', 'justify-center');
+
+        const modalContent = document.createElement('div');
+        modalContent.classList.add('bg-white', 'rounded-lg', 'shadow-lg', 'p-4', 'max-w-md', 'w-full');
+
+        const title = document.createElement('h2');
+        title.classList.add('text-xl', 'font-bold', 'mb-4');
+        title.textContent = 'Select Local';
+
+        const closeButton = document.createElement('button');
+        closeButton.classList.add('mt-4', 'bg-red-500', 'text-white', 'rounded-md', 'px-4', 'py-2');
+        closeButton.textContent = 'Close';
+        closeButton.addEventListener('click', function() {
+            modal.remove();
+        });
+
+        updateModalContent();
+        modal.appendChild(modalContent);
+        document.body.appendChild(modal);
+
+    })
+    .catch(function(error) {
+        console.error(error);
+    });
+
+        });
+
+        document.addEventListener('DOMContentLoaded', function() {
+        const rows = document.querySelectorAll('#backupTable tbody tr');
+
+        rows.forEach(row => {
+            const localId = row.getAttribute('data-local-id');
+
+            const localNameCell = row.querySelector('.local-name');
+            axios.get(`/api_locales/parlocs/${localId}`)
+                .then(function(response) {
+                    localNameCell.textContent = response.data.parloc.ParLocNom;
+                })
+                .catch(function(error) {
+                    localNameCell.textContent = 'Not found';
+                    console.error(error);
+                });
+        });
+    });
+
+    // Handle pagination
+    const prevPageButton = document.getElementById('prevPage');
+            const nextPageButton = document.getElementById('nextPage');
+
+            if (prevPageButton) {
+                prevPageButton.addEventListener('click', function() {
+                    const currentPage = {{ current_page }};
+                    if (currentPage > 1) {
+                        window.location.href = `/api_locales?local_id={{ local_id }}&start_date={{ start_date }}&end_date={{ end_date }}&page=${currentPage - 1}`;
+                    }
+                });
+            }
+
+            if (nextPageButton) {
+                nextPageButton.addEventListener('click', function() {
+                    const currentPage = {{ current_page }};
+                    if (currentPage < {{ pages }}) {
+                        window.location.href = `/api_locales?local_id={{ local_id }}&start_date={{ start_date }}&end_date={{ end_date }}&page=${currentPage + 1}`;
+                    }
+                });
+            }
+    </script>
+</body>
+</html>

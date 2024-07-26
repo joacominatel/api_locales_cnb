@@ -4,12 +4,13 @@ try:
     from datetime import datetime, timedelta
     
     # import flask
-    from flask import Flask, request, jsonify, g
+    from flask import Flask, request, jsonify, g, render_template
     from flask_cors import CORS
     from flask_jwt_extended import JWTManager, jwt_required, get_jwt_identity, create_access_token
 
     # import de las dependencias
     from werkzeug.security import generate_password_hash, check_password_hash
+    from sqlalchemy import and_, desc, func
     import os
 
 except ImportError as e:
@@ -18,7 +19,6 @@ except ImportError as e:
     exit()
 
 # import de la base de datos y modelos
-from sqlalchemy import and_
 from sql.db import init_db, gaci_session, conbra_session
 from sql.models.User import User
 from sql.models.Parloc import Parloc
@@ -77,18 +77,57 @@ def checkConnectionToDB():
         print(f"Error: {e}")
         return False
 
-@app.route('/api_locales')
-def index():
-    if checkConnectionToDB() == True:
-        return jsonify({
-            'success': True,
-            'message': 'Conexión exitosa a la base de datos y tablas creadas'
-        })
-    else:
+@app.route('/api_locales', methods=['GET'])
+def show_backups():
+    local_id = request.args.get('local_id', 0, type=int)
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+    page = request.args.get('page', 1, type=int)
+    per_page = 20
+
+    try:
+        query = g.db_session.query(BackupLocal)
+
+        if local_id:
+            query = query.filter_by(local_id=local_id)
+        else:
+            # Get the latest backup for each local
+            subquery = g.db_session.query(BackupLocal.local_id, func.max(BackupLocal.fecha_inicio_backup).label('max_date')).group_by(BackupLocal.local_id).subquery()
+            query = query.join(subquery, and_(BackupLocal.local_id == subquery.c.local_id, BackupLocal.fecha_inicio_backup == subquery.c.max_date))
+
+        if start_date:
+            start_date = datetime.strptime(start_date, '%Y-%m-%d')
+        else:
+            start_date = datetime.today() - timedelta(days=15)
+            
+        if end_date:
+            end_date = datetime.strptime(end_date, '%Y-%m-%d')
+        else:
+            end_date = datetime.today()
+
+        query = query.filter(BackupLocal.fecha_inicio_backup.between(start_date, end_date))
+        query = query.order_by(desc(BackupLocal.fecha_inicio_backup), BackupLocal.local_id)
+
+        total_backups = query.count()
+        backups = query.limit(per_page).offset((page - 1) * per_page).all()
+
+        backups_with_names = []
+        for backup in backups:
+            backup_dict = backup.serialize()
+            backups_with_names.append(backup_dict)
+
+        return render_template('index.html', 
+                               backups=backups_with_names,
+                               total_backups=total_backups,
+                               pages=(total_backups // per_page) + (1 if total_backups % per_page > 0 else 0),
+                               current_page=page
+                               )
+    
+    except Exception as e:
         return jsonify({
             'success': False,
-            'message': 'Error al conectar a la base de datos'
-        })
+            'message': f'Error al obtener backups: {e}'
+        }), 500
 
 @app.route('/api_locales/protected', methods=['GET'])
 # @jwt_required()
@@ -207,12 +246,13 @@ def parlocs():
                 'success': False,
                 'message': 'Token inválido'
             })
-        
     except Exception as e:
         return jsonify({
             'success': False,
             'message': f'Error al obtener locales: {e}'
         }), 500
+
+
     
 @app.route('/api_locales/parlocs/<int:id>', methods=['GET'])
 # @jwt_required()
@@ -296,39 +336,5 @@ def post_backup():
             'message': f'Error al guardar backup: {e}'
         }), 500
 
-    
-@app.route('/api_locales/api/backups', methods=['GET'])
-def get_backups():
-    local_id = request.args.get('local_id')
-    start_date = request.args.get('start_date')
-    end_date = request.args.get('end_date')
-
-    try:
-        query = g.db_session.query(BackupLocal)
-
-        if local_id:
-            query = query.filter_by(local_id=local_id)
-
-        if start_date:
-            start_date = datetime.strptime(start_date, '%Y-%m-%d')
-            query = query.filter(BackupLocal.fecha_inicio_backup >= start_date)
-
-        if end_date:
-            end_date = datetime.strptime(end_date, '%Y-%m-%d')
-            query = query.filter(BackupLocal.fecha_inicio_backup <= end_date)
-
-        backups = query.all()
-
-        return jsonify({
-            'success': True,
-            'backups': [backup.serialize() for backup in backups]
-        })
-
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'message': f'Error al obtener backups: {e}'
-        }), 500
-    
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
